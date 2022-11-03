@@ -2,23 +2,50 @@ const PORT = 8000;
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const {getCars} = require("./brandsId")
 
 const app = express();
 
-app.get("/", async (req, res) => {
+app.get("/", async (_, response) => {
   const result = await getFullResponse("https://www.cars.bg/");
-  res.json(result);
+  response.json(result);
 });
 
-app.get("/audi", async (req, res) => {
-    let baseUrl = "https://www.cars.bg/carslist.php?subm=1&add_search=1&typeoffer=1&brandId=8&conditions%5B%5D=4&conditions%5B%5D=1";
-    
-    if(Object.entries(req.query).length > 0){
-        baseUrl = setQueries(baseUrl, req.query)
-    }
+app.get("/search", async (request, response) => {
+  const cars = getCars();
+  const responseData = {
+    success: true,
+    error: {
+      hasError: false,
+      errorMessage: null
+    },
+    data: null,
+  };
+  let baseUrl = "https://www.cars.bg/";
 
-    const result = await getFullResponse(baseUrl);
-    res.json(result);
+  ///// Search for car in queries
+
+  if(request.query.brand){
+    const carId = cars[request.query.brand];
+    delete request.query.brand;
+
+    if(typeof carId !== 'undefined'){
+      baseUrl = `https://www.cars.bg/carslist.php?subm=1&add_search=1&typeoffer=1&brandId=${carId}&conditions%5B%5D=4&conditions%5B%5D=1`;
+    }else{
+      responseData.success = false,
+      responseData.error = true;
+      responseData.messageError = 'Car not found';
+    }
+  }
+
+  //// Set all queries
+  if(Object.entries(request.query).length > 0){
+    baseUrl = setQueries(baseUrl, request.query)
+  }
+  console.log(baseUrl)
+  responseData.data = await getFullResponse(baseUrl);
+
+  response.json(responseData)
 });
 
 app.listen(PORT, () => console.log(`Server running an port ${PORT}`));
@@ -66,6 +93,9 @@ function getFullResponse(url) {
         }
     })
     return incorporation;
+  }).catch(error => {
+    console.log(error);
+    return {message: error.message, status: error.response.status, headers: error.response.headers};
   });
 }
 
