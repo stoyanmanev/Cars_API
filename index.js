@@ -1,10 +1,13 @@
 const PORT = 8000;
 const express = require("express");
+var cors = require('cors')
 const { getCars } = require("./brandsId");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
 const {setQueries} = require("./helpers");
 
 const app = express();
+
+app.use(cors())
 
 // End points
 
