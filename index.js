@@ -3,7 +3,7 @@ const express = require("express");
 var cors = require('cors')
 const { getCars } = require("./brandsId");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
-const {setQueries} = require("./helpers");
+const {setQueries, convertObjToList} = require("./helpers");
 
 const app = express();
 
@@ -22,7 +22,8 @@ app.get("/", async (_, response) => {
   };
 
   const dbPut = await sendToDB(mergeObjs, "cars.json");
-  response.json(dbPut);
+  const list = convertObjToList(dbPut);
+  response.json(list);
 });
 
 app.get("/search", async (request, response) => {
@@ -64,7 +65,9 @@ app.get("/search", async (request, response) => {
     ...resultDB,
   };
   const dbPut = await sendToDB(mergeObjs, "cars.json");
-  response.json(dbPut);
+  const list = convertObjToList(dbPut);
+  response.json(list);
+  
 });
 
 app.get("/updateDB", async(_, response) => {
@@ -74,3 +77,4 @@ app.get("/updateDB", async(_, response) => {
 
 
 app.listen(PORT, () => console.log(`Server running an port ${PORT}`));
+
