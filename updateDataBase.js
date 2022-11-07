@@ -1,3 +1,4 @@
+const fs = require("fs");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { DB } = require("./globals");
@@ -99,14 +100,17 @@ function getFullResponse(url) {
         const element = $(this);
         urlsList.push(element[0].attribs.href);
       });
-      imgs.each(function () {
+      imgs.each(async function () {
         const element = $(this);
         const styles = element[0].attribs.style;
+
         const startSliceIndex = styles.indexOf("https://");
         const endSliceIndex = styles.indexOf('.jpg"');
-        const sliceStr = styles.slice(startSliceIndex, endSliceIndex + 4);
-
-        imgsList.push(sliceStr);
+        const url = styles.slice(startSliceIndex, endSliceIndex + 4);
+        const filenameStartSlice = styles.lastIndexOf("/");
+        const filename = styles.slice(filenameStartSlice + 1, styles.length - 3)
+        imgsList.push(filename);
+        await downloadImg(url, filename);        
       });
       infos.each(function () {
         const element = $(this).text();
@@ -117,6 +121,8 @@ function getFullResponse(url) {
         const result = getLocationPlace(element);
         citiesList.push(result);
       })
+
+      console.log(imgsList)
 
       const incorporation = titlesList.map((item, i) => {
         return {
@@ -216,6 +222,19 @@ function getLocationPlace(str){
   const split = str?.trim().split(',');
   return split[1]?.trim();
 }
+
+async function downloadImg(url, filename){
+
+  return axios({
+    method: "get",
+    url,
+    responseType: "stream",
+  }).then(function (response) {
+    response.data.pipe(fs.createWriteStream(`./images/image-${filename}`));
+  }).catch(error => {
+    console.log(error);
+  });
+};
 
 ///////////////////////
 /// Remove forbidden symbols from obj key for Firebase;
