@@ -1,3 +1,4 @@
+const fs = require("fs");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { DB } = require("./globals");
@@ -40,11 +41,11 @@ async function getDataForAll() {
 function dataFetching(id) {
   return new Promise((resolve) => {
     setTimeout(async () => {
-      console.log('resultFetch')
+      console.log("resultFetch");
       const resultFetch = await getFullResponse(
         `https://www.cars.bg/carslist.php?subm=1&add_search=1&typeoffer=1&brandId=${id}`
       );
-      console.log(resultFetch)
+      console.log(resultFetch);
       const responseRefactor = refactorToValidDBKeys(resultFetch);
       const resultDB = await getDataFromDB("cars.json");
 
@@ -74,7 +75,7 @@ function getFullResponse(url) {
         `a[href*="https://www.cars.bg/offer"] > .mdc-typography--body1`
       );
       const cities = $(`.offer-item .card__footer`);
-
+      const dates = $(`.offer-item .card__primary > .card__subtitle`);
 
       const titlesList = [];
       const pricesList = [];
@@ -84,7 +85,7 @@ function getFullResponse(url) {
       const brandsList = [];
       const modelsList = [];
       const citiesList = [];
-
+      const datesList = [];
 
       titles.each(function () {
         const string = getListByText($(this).text(), titlesList);
@@ -99,24 +100,35 @@ function getFullResponse(url) {
         const element = $(this);
         urlsList.push(element[0].attribs.href);
       });
-      imgs.each(function () {
+      imgs.each(async function () {
         const element = $(this);
         const styles = element[0].attribs.style;
+
         const startSliceIndex = styles.indexOf("https://");
         const endSliceIndex = styles.indexOf('.jpg"');
-        const sliceStr = styles.slice(startSliceIndex, endSliceIndex + 4);
-
-        imgsList.push(sliceStr);
+        const url = styles.slice(startSliceIndex, endSliceIndex + 4);
+        const filenameStartSlice = styles.lastIndexOf("/");
+        const filename = styles.slice(
+          filenameStartSlice + 1,
+          styles.length - 3
+        );
+        imgsList.push(`/images/${filename}`);
+        await downloadImg(url, filename);
       });
       infos.each(function () {
         const element = $(this).text();
         destructTextToObject(element, infosList);
       });
-      cities.each(function (){
+      cities.each(function () {
         const element = $(this).text();
         const result = getLocationPlace(element);
         citiesList.push(result);
-      })
+      });
+      dates.each(function () {
+        const element = $(this).text();
+        const date = currentDate(element);
+        datesList.push(date);
+      });
 
       const incorporation = titlesList.map((item, i) => {
         return {
@@ -128,6 +140,7 @@ function getFullResponse(url) {
             url: urlsList[i],
             mainImagePath: imgsList[i],
             city: citiesList[i],
+            date: datesList[i],
             ...infosList[i],
           },
         };
@@ -136,7 +149,7 @@ function getFullResponse(url) {
       return incorporation;
     })
     .catch((error) => {
-      console.log(error)
+      console.log(error);
       return errorResponse(error);
     });
 }
@@ -191,30 +204,65 @@ function destructTextToObject(el, list) {
   const str = el?.trim();
   const listStr = str.split(",");
   const convertType = convertTypeToTarget(listStr[1]?.trim());
-  list.push({ year: listStr[0]?.trim(), type: convertType, mileage: listStr[2]?.trim() });
+  list.push({
+    year: listStr[0]?.trim(),
+    type: convertType,
+    mileage: listStr[2]?.trim(),
+  });
   return list;
 }
 
-function convertTypeToTarget(str){
-  switch(str){
-    case 'Газ/Бензин':
-      return 'Gas';
-    case 'Бензин':
-      return 'Petrol';
-    case 'Дизел':
-      return 'Diesel';
-    case 'Метан/Бензин':
-      return 'Metan';
-    case 'Хибрид':
-      return 'Hybrid';
-    case 'Електричество':
-      return 'Electricity'
+function convertTypeToTarget(str) {
+  switch (str) {
+    case "Газ/Бензин":
+      return "Gas";
+    case "Бензин":
+      return "Petrol";
+    case "Дизел":
+      return "Diesel";
+    case "Метан/Бензин":
+      return "Metan";
+    case "Хибрид":
+      return "Hybrid";
+    case "Електричество":
+      return "Electricity";
   }
 }
 
-function getLocationPlace(str){
-  const split = str?.trim().split(',');
+function getLocationPlace(str) {
+  const split = str?.trim().split(",");
   return split[1]?.trim();
+}
+
+function currentDate(str){
+  const input = str.replace(/[\n_ ]/g, "");
+  if(input.indexOf(',') === -1){
+    const date = input.trim();
+    return date;
+  };
+  const inputDate = input.slice(0, input.indexOf(',')).trim();
+  if(inputDate.includes('днес')){
+    const date = formatDate(new Date());
+    return date;
+  }else if(inputDate.includes('вчера')){
+    const date = new Date();
+    const yesterday = formatDate(date.setDate(date.getDate() - 1));
+    return yesterday;
+  }
+  return inputDate;
+}
+async function downloadImg(url, filename) {
+  return axios({
+    method: "get",
+    url,
+    responseType: "stream",
+  })
+    .then(function (response) {
+      response.data.pipe(fs.createWriteStream(`./images/image-${filename}`));
+    })
+    .catch((error) => {
+      console.log(error);
+    });
 }
 
 ///////////////////////
@@ -247,6 +295,21 @@ function errorResponse(error) {
     isError: true,
     error: error?.code || false,
   };
+}
+
+//////////////////
+// external 
+
+function padTo2Digits(num) {
+  return num.toString().padStart(2, '0');
+}
+
+function formatDate(date) {
+  return [
+    padTo2Digits(date.getDate()),
+    padTo2Digits(date.getMonth() + 1),
+    date.getFullYear(),
+  ].join('.');
 }
 
 ///////////////////////
