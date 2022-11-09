@@ -234,22 +234,35 @@ function getLocationPlace(str) {
   return split[1]?.trim();
 }
 
-function currentDate(str){
+function currentDate(str) {
   const input = str.replace(/[\n_ ]/g, "");
-  if(input.indexOf(',') === -1){
-    const date = input.trim();
-    return date;
-  };
-  const inputDate = input.slice(0, input.indexOf(',')).trim();
-  if(inputDate.includes('днес')){
-    const date = formatDate(new Date());
-    return date;
-  }else if(inputDate.includes('вчера')){
+  const inputDate = input.slice(0, input.indexOf(",")).trim();
+
+  if (inputDate.includes("днес") || input.includes("днес")) {
     const date = new Date();
-    const yesterday = formatDate(date.setDate(date.getDate() - 1));
+    return date;
+  } else if (inputDate.includes("вчера") || input.includes("вчера")) {
+    const now = Date.now();
+    const oneDay = 86_400_000;
+    const yesterday = new Date(now - oneDay);
     return yesterday;
+  }else if(input.indexOf(",") === -1){
+    const spl = input.trim().split(".");
+    const year = +`20${spl[2]}`;
+    const month = +spl[1] - 1;
+    const day = +spl[0];
+    const date = new Date(+year, month, day);
+    return date;
+  }else if(inputDate.split(".")){
+    const spl = inputDate.split(".");
+    const year = +`20${spl[2]}`;
+    const month = +spl[1] - 1;
+    const day = +spl[0];
+    const date = new Date(+year, month, day);
+    return date
   }
-  return inputDate;
+
+  return input;
 }
 async function downloadImg(url, filename) {
   return axios({
@@ -298,19 +311,7 @@ function errorResponse(error) {
 }
 
 //////////////////
-// external 
-
-function padTo2Digits(num) {
-  return num.toString().padStart(2, '0');
-}
-
-function formatDate(date) {
-  return [
-    padTo2Digits(date.getDate()),
-    padTo2Digits(date.getMonth() + 1),
-    date.getFullYear(),
-  ].join('.');
-}
+// external
 
 ///////////////////////
 /// Export
