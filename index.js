@@ -4,6 +4,7 @@ var cors = require('cors')
 const { getCars } = require("./brandsId");
 const {DB} = require("./globals");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
+const {getBrands} = require("./getters");
 const {clearDB} = require('./clearDataBase');
 const {setQueries, convertObjToList} = require("./helpers");
 
@@ -75,6 +76,15 @@ app.get("/search", async (request, response) => {
 app.get("/updateDB", async(_, response) => {
   const responseData = await getDataForAll();
   response.json(responseData);
+})
+
+app.get("/brands", async(_, response) => {
+  try{
+    const brandsList = getBrands();
+    response.json({brands: brandsList, status: 'success', message: "All brands' output has been successful. "});
+  }catch(error){
+    response.json({brands: [], status: 'failed', message: 'Something went wrong.', error: true})
+  }
 })
 
 app.get("/clear", async(_, response) => {
