@@ -1,7 +1,7 @@
 const fs = require("fs");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { DB } = require("./globals");
+const { DB, CLIENT_URL } = require("./globals");
 
 // update firebase async
 //////////// Get Data for all cars
@@ -112,7 +112,7 @@ function getFullResponse(url) {
           filenameStartSlice + 1,
           styles.length - 3
         );
-        imgsList.push(`/images/${filename}`);
+        imgsList.push(`images/cars/i-${filename}`);
         await downloadImg(url, filename);
       });
       infos.each(function () {
@@ -271,7 +271,7 @@ async function downloadImg(url, filename) {
     responseType: "stream",
   })
     .then(function (response) {
-      response.data.pipe(fs.createWriteStream(`./images/image-${filename}`));
+      response.data.pipe(fs.createWriteStream(`${CLIENT_URL}images/cars/i-${filename}`));
     })
     .catch((error) => {
       console.log(error);
