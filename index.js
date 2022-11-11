@@ -2,7 +2,9 @@ const PORT = 8000;
 const express = require("express");
 var cors = require('cors')
 const { getCars } = require("./brandsId");
+const {DB} = require("./globals");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
+const {clearDB} = require('./clearDataBase');
 const {setQueries, convertObjToList} = require("./helpers");
 
 const app = express();
@@ -73,6 +75,11 @@ app.get("/search", async (request, response) => {
 app.get("/updateDB", async(_, response) => {
   const responseData = await getDataForAll();
   response.json(responseData);
+})
+
+app.get("/clear", async(_, response) => {
+  const clearData = await clearDB(`${DB}/cars.json`);
+  response.json(clearData);
 })
 
 
