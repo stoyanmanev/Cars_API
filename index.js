@@ -1,14 +1,23 @@
-const PORT = 8000;
 const express = require("express");
-var cors = require('cors')
+const cors = require('cors')
+const http = require('http');
+const {Server} = require('socket.io');
+
 const { getCars } = require("./brandsId");
-const {DB} = require("./globals");
+const {DB, PORT, SOCKETPORT} = require("./globals");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
 const {getBrands} = require("./getters");
 const {clearDB} = require('./clearDataBase');
 const {setQueries, convertObjToList} = require("./helpers");
+const {updateSocketDB} = require("./socket");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+})
 
 app.use(cors())
 
@@ -92,6 +101,10 @@ app.get("/clear", async(_, response) => {
   response.json(clearData);
 })
 
+io.on('connection', (socket) => {
+  updateSocketDB(socket);
+})
 
 app.listen(PORT, () => console.log(`Server running an port ${PORT}`));
+server.listen(SOCKETPORT, () => console.log(`Web Socket listen an port ${SOCKETPORT}`));
 
