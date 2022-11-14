@@ -6,19 +6,22 @@ const { DB, CLIENT_URL } = require("./globals");
 // update firebase async
 //////////// Get Data for all cars
 
-async function getDataForAll() {
+async function getDataForAll(socket) {
+  const tasks = 87;
   return new Promise(async (resolve) => {
     console.log(`Start getting database...`);
 
-    for (let i = 1; i < 88; i) {
+    for (let i = 1; i <= tasks; i) {
       console.log(i);
 
       const response = await dataFetching(i);
-      if (i === 78) {
-        console.log("less than 10 more...");
-      }
-      if (i === 87) {
-        console.log(`Finnish! All database is now available`);
+      if(socket){
+        socket.emit("db-message", {
+          tasks,
+          currTask: i,
+          message: `CarId fetching... => ${i}`,
+          finished: false,
+        });
       }
       if (response) {
         console.log(`CarId fetching... => ${i}`);
@@ -283,7 +286,6 @@ async function downloadImg(url, filename) {
 
 function refactorToValidDBKeys(list) {
   const responseObj = {};
-  console.log(list);
   list.forEach((obj) => {
     const keys = Object.keys(obj);
 

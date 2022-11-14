@@ -1,14 +1,23 @@
-const PORT = 8000;
 const express = require("express");
-var cors = require('cors')
+const cors = require('cors')
+const http = require('http');
+const {Server} = require('socket.io');
+
 const { getCars } = require("./brandsId");
-const {DB} = require("./globals");
+const {DB, PORT, SOCKETPORT} = require("./globals");
 const {getFullResponse, refactorToValidDBKeys, sendToDB, getDataForAll, getDataFromDB} = require("./updateDataBase");
-const {getBrands} = require("./getters");
+const {getBrands, getCarsByBrand} = require("./getters");
 const {clearDB} = require('./clearDataBase');
 const {setQueries, convertObjToList} = require("./helpers");
+const {updateSocketDB} = require("./socket");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+})
 
 app.use(cors())
 
@@ -30,6 +39,8 @@ app.get("/", async (_, response) => {
 });
 
 app.get("/search", async (request, response) => {
+  const brandPresent = request._parsedUrl.query && request._parsedUrl.query.split("=").some(item => item === "brand");
+
   const cars = getCars();
   const responseData = {
     success: true,
@@ -67,9 +78,33 @@ app.get("/search", async (request, response) => {
     ...responseRefactor,
     ...resultDB,
   };
+  
   const dbPut = await sendToDB(mergeObjs, "cars.json");
+
+
+  if(brandPresent){
+    const brandSplit = request._parsedUrl.query.split("&");
+    const brandMap = brandSplit.filter(query => {
+      const isIncludes = query.includes("brand=");
+      if(isIncludes){
+        const brand = query.split("=")[1];
+        return brand;
+      }
+    })
+    
+    const list = convertObjToList({
+      data: mergeObjs,
+      status: response.status,
+      error: response?.code || false,
+    });
+  
+    const filter = getCarsByBrand(brandMap[0].split("=")[1], list);
+
+    return response.json(filter);
+  }
+
   const list = convertObjToList(dbPut);
-  response.json(list);
+  return response.json(list);
   
 });
 
@@ -92,6 +127,10 @@ app.get("/clear", async(_, response) => {
   response.json(clearData);
 })
 
+io.on('connection', (socket) => {
+  updateSocketDB(socket);
+})
 
 app.listen(PORT, () => console.log(`Server running an port ${PORT}`));
+server.listen(SOCKETPORT, () => console.log(`Web Socket listen an port ${SOCKETPORT}`));
 
